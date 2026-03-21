@@ -157,11 +157,11 @@ class ContactStats extends WeComSDK {
    * 
    * 📌 功能说明：
    * - 自动判断查询日期是否包含今天
-   * - 历史数据 → 调用 API
+   * - 历史数据 → 调用 API（YYYYMMDD格式）
    * - 当日数据 → 返回缓存的实时统计
    * 
-   * @param {number} startTime 开始时间戳
-   * @param {number} endTime 结束时间戳
+   * @param {string|number} startDate 开始日期（YYYYMMDD格式）
+   * @param {string|number} endDate 结束日期（YYYYMMDD格式）
    * @param {string} userId 成员ID（可选，多个用逗号分隔）
    * @param {string} departmentId 部门ID（可选）
    * @returns {Promise<object>}
@@ -169,8 +169,8 @@ class ContactStats extends WeComSDK {
    * @example
    * // 查询最近7天数据（会自动处理今天和历史的返回）
    * const stats = await contactStats.getUserClientStatSmart(
-   *   Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000),
-   *   Math.floor(Date.now() / 1000),
+   *   '20260314',  // 7天前
+   *   '20260321',  // 今天
    *   'user1,user2'
    * );
    * console.log(stats);
@@ -180,10 +180,18 @@ class ContactStats extends WeComSDK {
    * //   isTodayIncluded: true
    * // }
    */
-  async getUserClientStatSmart(startTime, endTime, userId = '', departmentId = '') {
-    const includesToday = this._includesToday(endTime);
+  async getUserClientStatSmart(startDate, endDate, userId = '', departmentId = '') {
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const todayNum = parseInt(today);
+    const startNum = parseInt(String(startDate));
+    const endNum = parseInt(String(endDate));
+    
+    const includesToday = endNum >= todayNum;
+    
     const result = {
       isTodayIncluded: includesToday,
+      startDate: String(startDate),
+      endDate: String(endDate),
       historical: null,
       today: null
     };
@@ -192,12 +200,15 @@ class ContactStats extends WeComSDK {
       // 需要分别处理：历史 + 今天
       
       // 1. 获取昨天及之前的历史数据
-      const yesterdayRange = this._getYesterdayRange();
-      if (startTime < yesterdayRange.endTime) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
+      
+      if (startNum < parseInt(yesterdayStr)) {
         // 只查询到昨天
         result.historical = await this.getUserClientStat(
-          startTime,
-          yesterdayRange.endTime,
+          startDate,
+          yesterdayStr,
           userId,
           departmentId
         );
@@ -209,8 +220,8 @@ class ContactStats extends WeComSDK {
     } else {
       // 全部是历史数据，直接调用 API
       result.historical = await this.getUserClientStat(
-        startTime,
-        endTime,
+        startDate,
+        endDate,
         userId,
         departmentId
       );
@@ -225,22 +236,23 @@ class ContactStats extends WeComSDK {
    * ⚠️ 注意：
    * - 无法查询当天数据，只能查询昨天及之前
    * - 传入多个userid返回总体数据，非每人一条
+   * - 日期格式：YYYYMMDD（如 20260320）
    * 
-   * @param {number} startTime 开始时间戳
-   * @param {number} endTime 结束时间戳
-   * @param {string} userId 成员ID（可选）
+   * @param {string|number} startDate 开始日期（YYYYMMDD格式）
+   * @param {string|number} endDate 结束日期（YYYYMMDD格式）
+   * @param {string} userId 成员ID（可选，多个用逗号分隔）
    * @param {string} departmentId 部门ID（可选）
    */
-  async getUserClientStat(startTime, endTime, userId = '', departmentId = '') {
+  async getUserClientStat(startDate, endDate, userId = '', departmentId = '') {
     /**
      * 📌 API 限制说明：
-     * 1. endTime 不能超过昨天 23:59:59
+     * 1. endDate 不能是今天
      * 2. 多个 userid 返回总体数据
      * 3. 查看单人数据需逐个调用
      */
     return this.post('/externalcontact/get_user_client_data', {
-      start_time: startTime,
-      end_time: endTime,
+      start_time: String(startDate),
+      end_time: String(endDate),
       userid: userId,
       department_id: departmentId
     });
@@ -250,14 +262,14 @@ class ContactStats extends WeComSDK {
    * 获取成员联系客户统计明细
    * 
    * @param {string} userId 成员ID
-   * @param {number} startTime 开始时间戳
-   * @param {number} endTime 结束时间戳
+   * @param {string|number} startDate 开始日期（YYYYMMDD格式）
+   * @param {string|number} endDate 结束日期（YYYYMMDD格式）
    */
-  async getUserClientDetail(userId, startTime, endTime) {
+  async getUserClientDetail(userId, startDate, endDate) {
     return this.post('/externalcontact/get_user_client_detail', {
       userid: userId,
-      start_time: startTime,
-      end_time: endTime
+      start_time: String(startDate),
+      end_time: String(endDate)
     });
   }
 
@@ -268,10 +280,10 @@ class ContactStats extends WeComSDK {
    * 
    * ⚠️ 注意：同样受当天数据限制
    */
-  async getGroupChatStat(startTime, endTime, userId = '', departmentId = '') {
+  async getGroupChatStat(startDate, endDate, userId = '', departmentId = '') {
     return this.post('/externalcontact/get_group_chat_data', {
-      start_time: startTime,
-      end_time: endTime,
+      start_time: String(startDate),
+      end_time: String(endDate),
       userid: userId,
       department_id: departmentId
     });
@@ -281,8 +293,14 @@ class ContactStats extends WeComSDK {
    * 智能获取群聊统计数据
    * @see getUserClientStatSmart
    */
-  async getGroupChatStatSmart(startTime, endTime, userId = '', departmentId = '') {
-    const includesToday = this._includesToday(endTime);
+  async getGroupChatStatSmart(startDate, endDate, userId = '', departmentId = '') {
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const todayNum = parseInt(today);
+    const startNum = parseInt(String(startDate));
+    const endNum = parseInt(String(endDate));
+    
+    const includesToday = endNum >= todayNum;
+    
     const result = {
       isTodayIncluded: includesToday,
       historical: null,
@@ -290,11 +308,14 @@ class ContactStats extends WeComSDK {
     };
     
     if (includesToday) {
-      const yesterdayRange = this._getYesterdayRange();
-      if (startTime < yesterdayRange.endTime) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
+      
+      if (startNum < parseInt(yesterdayStr)) {
         result.historical = await this.getGroupChatStat(
-          startTime,
-          yesterdayRange.endTime,
+          startDate,
+          yesterdayStr,
           userId,
           departmentId
         );
@@ -302,7 +323,7 @@ class ContactStats extends WeComSDK {
       // 当日群聊数据需要从事件回调收集（暂无缓存）
       result.today = { note: '当日群聊数据需通过事件回调获取' };
     } else {
-      result.historical = await this.getGroupChatStat(startTime, endTime, userId, departmentId);
+      result.historical = await this.getGroupChatStat(startDate, endDate, userId, departmentId);
     }
     
     return result;
@@ -311,11 +332,11 @@ class ContactStats extends WeComSDK {
   /**
    * 获取群聊统计数据详情
    */
-  async getGroupChatDetail(chatId, startTime, endTime) {
+  async getGroupChatDetail(chatId, startDate, endDate) {
     return this.post('/externalcontact/get_group_chat_detail', {
       chat_id: chatId,
-      start_time: startTime,
-      end_time: endTime
+      start_time: String(startDate),
+      end_time: String(endDate)
     });
   }
 
@@ -324,10 +345,10 @@ class ContactStats extends WeComSDK {
   /**
    * 获取客户流失统计数据
    */
-  async getUserLostStat(startTime, endTime, userId = '') {
+  async getUserLostStat(startDate, endDate, userId = '') {
     return this.post('/externalcontact/get_user_lost_data', {
-      start_time: startTime,
-      end_time: endTime,
+      start_time: String(startDate),
+      end_time: String(endDate),
       userid: userId
     });
   }
@@ -337,11 +358,11 @@ class ContactStats extends WeComSDK {
   /**
    * 获取客户群成员统计
    */
-  async getGroupChatMemberStat(groupChatId, startTime, endTime) {
+  async getGroupChatMemberStat(groupChatId, startDate, endDate) {
     return this.post('/externalcontact/get_group_chat_member_stat', {
       chat_id: groupChatId,
-      start_time: startTime,
-      end_time: endTime
+      start_time: String(startDate),
+      end_time: String(endDate)
     });
   }
 
@@ -350,11 +371,11 @@ class ContactStats extends WeComSDK {
   /**
    * 获取客户互动统计数据
    */
-  async getUserInteractionStat(userId, startTime, endTime) {
+  async getUserInteractionStat(userId, startDate, endDate) {
     return this.post('/externalcontact/get_user_interaction_stat', {
       userid: userId,
-      start_time: startTime,
-      end_time: endTime
+      start_time: String(startDate),
+      end_time: String(endDate)
     });
   }
 }
