@@ -242,7 +242,7 @@ class AddressBook extends WeComSDK {
    * @param {number} departmentId 部门 id
    */
   async getDepartmentDetail(departmentId) {
-    return this.post('/department/get', { id: departmentId });
+    return this.get('/department/get', { id: departmentId });
   }
 
   // ========== 标签管理 ==========
