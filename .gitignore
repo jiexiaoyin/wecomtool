@@ -23,3 +23,13 @@ events_*.json
 # 系统文件
 .DS_Store
 Thumbs.db
+
+
+# 通讯录缓存（敏感数据）
+data/
+*.cache.json
+addressbook_cache.json
+
+# 统计数据（敏感）
+stats*.json
+wecom-stats.json
