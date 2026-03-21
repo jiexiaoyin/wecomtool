@@ -16,6 +16,10 @@ const CallbackClass = CallbackModule.default || CallbackModule;
 // 导入统计模块
 const ContactStats = require('./src/modules/contact_stats/index.js');
 
+// 导入通讯录缓存模块
+const AddressBookCache = require('./src/modules/addressbook_cache/index.js');
+const AddressBook = require('./src/modules/addressbook/index.js');
+
 // 导入回调工具函数
 const { createCallbackHandler } = require('./src/callback-helper.js');
 
@@ -60,6 +64,29 @@ const plugin = {
       contactStats = new ContactStats(config);
       console.log('[wecomtool] 统计模块已初始化');
     }
+    
+    // 初始化通讯录缓存模块
+    let addressBookCache = null;
+    let addressBook = null;
+    if (config.corpId && config.corpSecret) {
+      addressBook = new AddressBook(config);
+      addressBookCache = new AddressBookCache(config, {
+        onConfirm: () => {
+          // 用户确认后开始同步
+          addressBookCache.syncFromAPI(addressBook);
+        }
+      });
+      
+      // 检查是否需要同步
+      const syncStatus = addressBookCache.requestSync();
+      
+      if (syncStatus.needConfirm) {
+        console.log('[wecomtool] 通讯录缓存未初始化，请回复"同步通讯录"开始同步');
+        // 不自动同步，等待用户确认
+      } else if (syncStatus.alreadySynced) {
+        console.log('[wecomtool] 通讯录缓存已就绪');
+      }
+    }
 
     // 创建回调处理器
     callbackHandler = createCallbackHandler({
@@ -91,6 +118,26 @@ const plugin = {
           // 记录统计日志
           if (['add_external_contact', 'del_external_contact', 'change_external_contact'].includes(message.Event)) {
             console.log(`[wecomtool] 客户统计: ${message.Event} - ${message.UserID || 'unknown'}`);
+          }
+        }
+        
+        // 更新通讯录缓存（事件驱动）
+        if (addressBookCache && message.Event) {
+          switch (message.Event) {
+            case 'change_member':
+              addressBookCache.onUserUpdate({
+                userid: message.UserID,
+                name: message.Name,
+                // 其他字段
+              });
+              break;
+            case 'change_department':
+              addressBookCache.onDepartmentUpdate({
+                id: message.Id,
+                name: message.Name,
+                parentid: message.ParentId,
+              });
+              break;
           }
         }
         
