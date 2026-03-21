@@ -4,7 +4,7 @@
  * 包含：成员管理、部门管理、标签管理、异步导入导出
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class AddressBook extends WeComSDK {
   constructor(config) {
@@ -81,7 +81,7 @@ class AddressBook extends WeComSDK {
    * @param {boolean} fetchChild 是否递归获取子部门成员
    */
   async getDepartmentUsers(departmentId, fetchChild = false) {
-    return this.post('/user/simplelist', {
+    return this.get('/user/simplelist', {
       department_id: departmentId,
       fetch_child: fetchChild ? 1 : 0
     });
@@ -93,7 +93,7 @@ class AddressBook extends WeComSDK {
    * @param {boolean} fetchChild 是否递归获取子部门成员
    */
   async getDepartmentUsersDetail(departmentId, fetchChild = false) {
-    return this.post('/user/list', {
+    return this.get('/user/list', {
       department_id: departmentId,
       fetch_child: fetchChild ? 1 : 0
     });
@@ -145,7 +145,7 @@ class AddressBook extends WeComSDK {
    * @param {number} departmentId 部门 id
    */
   async getUserIdList(departmentId) {
-    return this.post('/user/list_id', { department_id: departmentId });
+    return this.get('/user/list_id', { department_id: departmentId });
   }
 
   // ========== 用户ID转换 ==========
