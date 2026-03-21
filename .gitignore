@@ -1,0 +1,23 @@
+# 敏感配置
+.env
+config.local.json
+*.local.json
+config.production.json
+
+# 日志
+logs/
+*.log
+npm-debug.log*
+
+# 事件记录
+events_*.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db

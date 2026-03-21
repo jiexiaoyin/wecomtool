@@ -1,0 +1,15 @@
+{
+  "id": "wecomtool",
+  "channels": [],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "corpId": { "type": "string" },
+      "corpSecret": { "type": "string" },
+      "agentId": { "type": "string" },
+      "token": { "type": "string" },
+      "encodingAESKey": { "type": "string" }
+    }
+  }
+}

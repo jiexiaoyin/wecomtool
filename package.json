@@ -1,0 +1,35 @@
+{
+  "name": "wecomtool",
+  "version": "1.0.0",
+  "description": "企业微信 API 工具 OpenClaw 插件 - 继承 OpenClaw 端口，支持 32+ API 模块",
+  "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "keywords": [
+    "openclaw",
+    "wecom",
+    "enterprise-wechat",
+    "wechatwork",
+    "chatbot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "homepage": "https://github.com/jiexiaoyin/wecomtool#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jiexiaoyin/wecomtool.git"
+  },
+  "dependencies": {
+    "xml2js": "^0.6.2"
+  },
+  "openclaw": {
+    "extensions": [
+      "./plugin.ts"
+    ]
+  },
+  "engines": {
+    "openclaw": ">=2026.0.0"
+  }
+}
