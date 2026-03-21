@@ -4,7 +4,7 @@
  * 包含：网页授权登录、企业微信 Web 登录、二次验证
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Auth extends WeComSDK {
   constructor(config) {

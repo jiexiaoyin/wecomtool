@@ -5,7 +5,7 @@
  * 注意：与会议模块(meeting)的Rooms不同，这里是独立的会议室系统
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Room extends WeComSDK {
   constructor(config) {

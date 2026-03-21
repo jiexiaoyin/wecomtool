@@ -4,7 +4,7 @@
  * 包含：企业群发、欢迎语、提醒成员等
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Messenger extends WeComSDK {
   constructor(config) {

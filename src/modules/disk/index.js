@@ -3,7 +3,7 @@
  * API 章节：十八
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 const fs = require('fs');
 const path = require('path');
 

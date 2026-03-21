@@ -4,7 +4,7 @@
  * 包含：预约会议、会议统计、会中控制、网络研讨会、会议室等
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Meeting extends WeComSDK {
   constructor(config) {

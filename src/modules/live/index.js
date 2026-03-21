@@ -3,7 +3,7 @@
  * API 章节：十九
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Live extends WeComSDK {
   constructor(config) {

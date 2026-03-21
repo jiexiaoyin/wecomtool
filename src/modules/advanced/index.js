@@ -4,7 +4,7 @@
  * 包含：成员申请回调、审批单设置、批量获取申请单
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Advanced extends WeComSDK {
   constructor(config) {

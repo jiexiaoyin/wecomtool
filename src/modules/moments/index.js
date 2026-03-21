@@ -4,7 +4,7 @@
  * 包含：发表朋友圈、停止发表、获取记录等
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Moments extends WeComSDK {
   constructor(config) {

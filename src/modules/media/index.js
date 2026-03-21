@@ -4,7 +4,7 @@
  * 包含：临时素材、图片、高清语音
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 const fs = require('fs');
 const path = require('path');
 

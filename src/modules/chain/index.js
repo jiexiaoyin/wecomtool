@@ -4,7 +4,7 @@
  * 包含：基础接口、上下游通讯录管理、上下游规则、回调事件
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Chain extends WeComSDK {
   constructor(config) {

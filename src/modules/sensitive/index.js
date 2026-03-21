@@ -4,7 +4,7 @@
  * 包含：敏感词管理、敏感行为管理
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Sensitive extends WeComSDK {
   constructor(config) {

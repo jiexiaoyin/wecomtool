@@ -4,7 +4,7 @@
  * 包含：发送消息、接收消息、群聊管理、智能机器人
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Message extends WeComSDK {
   constructor(config) {

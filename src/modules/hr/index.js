@@ -4,7 +4,7 @@
  * 包含：花名册管理
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class HR extends WeComSDK {
   constructor(config) {

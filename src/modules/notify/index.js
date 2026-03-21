@@ -4,7 +4,7 @@
  * 包含：发起语音电话、获取接听状态
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Notify extends WeComSDK {
   constructor(config) {

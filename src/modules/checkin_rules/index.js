@@ -4,7 +4,7 @@
  * 包含：管理打卡规则、设备打卡数据
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class CheckInRules extends WeComSDK {
   constructor(config) {

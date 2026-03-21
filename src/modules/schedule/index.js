@@ -4,7 +4,7 @@
  * 包含：管理日历、管理日程
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Schedule extends WeComSDK {
   constructor(config) {

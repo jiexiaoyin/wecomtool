@@ -4,7 +4,7 @@
  * 包含：应用管理、自定义菜单
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class App extends WeComSDK {
   constructor(config) {

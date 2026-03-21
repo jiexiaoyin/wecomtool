@@ -4,7 +4,7 @@
  * 包含：文档管理、收集表、素材管理
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Document extends WeComSDK {
   constructor(config) {

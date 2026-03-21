@@ -4,7 +4,7 @@
  * 包含：拨打记录
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Phone extends WeComSDK {
   constructor(config) {

@@ -4,7 +4,7 @@
  * 包含：联系客户统计、群聊数据统计
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class ContactStats extends WeComSDK {
   constructor(config) {

@@ -4,7 +4,7 @@
  * 包含：学校通知
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class School extends WeComSDK {
   constructor(config) {

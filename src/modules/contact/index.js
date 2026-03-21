@@ -4,7 +4,7 @@
  * 包含：客户管理、客户标签、离职/在职继承、客户群、规则组、联系我等
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Contact extends WeComSDK {
   constructor(config) {

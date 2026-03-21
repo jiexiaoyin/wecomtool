@@ -3,7 +3,7 @@
  * API 章节：二十二
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Approval extends WeComSDK {
   constructor(config) {

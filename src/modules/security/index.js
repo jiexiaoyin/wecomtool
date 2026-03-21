@@ -4,7 +4,7 @@
  * 包含：文件防泄漏、设备管理、截屏/录屏管理、高级功能账号管理、操作日志
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Security extends WeComSDK {
   constructor(config) {

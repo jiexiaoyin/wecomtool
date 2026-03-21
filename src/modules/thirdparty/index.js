@@ -4,7 +4,7 @@
  * 包含：获取下级企业 token、小程序 session 等
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class ThirdParty extends WeComSDK {
   constructor(config) {

@@ -4,7 +4,7 @@
  * 包含：获客链接管理、额度管理、广告优化等
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class OceanEngine extends WeComSDK {
   constructor(config) {

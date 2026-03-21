@@ -4,7 +4,7 @@
  * 包含：获取群聊列表、群聊详情、修改群聊
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class OpenChat extends WeComSDK {
   constructor(config) {

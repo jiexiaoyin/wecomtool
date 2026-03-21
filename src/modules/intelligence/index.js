@@ -3,7 +3,7 @@
  * API 章节：十二
  */
 
-const WeComSDK = require('../sdk');
+const WeComSDK = require('../../sdk');
 
 class Intelligence extends WeComSDK {
   constructor(config) {
