@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const xml2js = require('xml2js');
 const EventEmitter = require('events');
 const { verifyWecomSignature, decryptWecomEncrypted, encryptWecomPlaintext } = require('../../crypto');
+const Approval = require('../approval');
 
 class Callback extends EventEmitter {
   constructor(config) {
@@ -34,9 +35,15 @@ class Callback extends EventEmitter {
     
     // 事件处理器映射
     this.handlers = {};
+
+    // 审批模块（用于获取审批详情）
+    this.approval = new Approval(config);
     
     // 初始化默认处理器
     this._initDefaultHandlers();
+    
+    // 加载已有事件历史
+    this.loadEventHistory();
   }
 
   // ========== 初始化默认处理器 ==========
@@ -252,7 +259,10 @@ class Callback extends EventEmitter {
       Description: xml.Description,
       Url: xml.Url,
       // 加密消息
-      Encrypt: xml.Encrypt
+      Encrypt: xml.Encrypt,
+      // 外部联系人变更事件关键字段
+      ChangeType: xml.ChangeType,
+      ExternalUserId: xml.ExternalUserId,
     };
 
     return message;
@@ -389,6 +399,13 @@ class Callback extends EventEmitter {
       this.eventHistory.pop();
     }
     
+    // 根据类型分别保存到不同文件
+    if (record.type === 'text' || record.msgType === 'text') {
+      this._appendToFile('message_history.jsonl', record);
+    } else {
+      this._appendToFile('event_history.jsonl', record);
+    }
+    
     return record;
   }
 
@@ -437,91 +454,267 @@ class Callback extends EventEmitter {
     return { success: true, count: this.eventHistory.length, filePath };
   }
 
+  /**
+   * 追加记录到指定文件
+   * @param {string} filename 文件名
+   * @param {object} record 单条记录
+   */
+  _appendToFile(filename, record) {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const dir = '/root/.openclaw/extensions/wecomtool/data';
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const filePath = path.join(dir, filename);
+      fs.appendFileSync(filePath, JSON.stringify(record) + '\n', 'utf8');
+    } catch (e) {
+      console.log('[wecomtool] 写入文件失败:', e.message);
+    }
+  }
+
+  /**
+   * 加载事件历史（兼容旧数组格式 + 新增追加格式）
+   * 文本消息从 message_history.jsonl 加载，事件从 event_history.jsonl 加载
+   */
+  loadEventHistory() {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const dataDir = '/root/.openclaw/extensions/wecomtool/data';
+      const records = [];
+      
+      const files = ['event_history.jsonl', 'message_history.jsonl'];
+      
+      for (const filename of files) {
+        const filePath = path.join(dataDir, filename);
+        
+        if (!fs.existsSync(filePath)) {
+          // 尝试旧格式数组文件
+          const oldPath = path.join(dataDir, 'event_history.jsonl');
+          if (fs.existsSync(oldPath)) {
+            const raw = fs.readFileSync(oldPath, 'utf8').trim();
+            if (raw.startsWith('[')) {
+              const oldRecords = JSON.parse(raw);
+              records.push(...oldRecords);
+              console.log('[wecomtool] 兼容加载旧格式:', oldRecords.length, '条 from', filename);
+            }
+          }
+          continue;
+        }
+        
+        const raw = fs.readFileSync(filePath, 'utf8').trim();
+        if (!raw) continue;
+        
+        const fileRecords = raw.split('\n')
+          .filter(line => line.trim())
+          .map(line => JSON.parse(line));
+        records.push(...fileRecords);
+        console.log('[wecomtool] 加载', filename, ':', fileRecords.length, '条');
+      }
+      
+      // 按时间倒序
+      records.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      this.eventHistory = records.slice(0, this.maxHistorySize);
+      console.log('[wecomtool] 事件历史合计:', this.eventHistory.length, '条');
+    } catch (e) {
+      console.log('[wecomtool] 加载事件历史失败:', e.message);
+    }
+  }
+
+  /**
+   * 加载事件历史从文件（兼容旧数组格式 + 新追加格式）
+   */
+  loadEventHistory() {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = '/root/.openclaw/extensions/wecomtool/data/event_history.jsonl';
+      
+      if (!fs.existsSync(filePath)) {
+        return;
+      }
+      
+      const raw = fs.readFileSync(filePath, 'utf8').trim();
+      if (!raw) {
+        return;
+      }
+      
+      // 兼容旧格式（JSON 数组）
+      if (raw.startsWith('[')) {
+        this.eventHistory = JSON.parse(raw);
+      } else {
+        // 新格式：每行一个 JSON 对象
+        this.eventHistory = raw.split('\n')
+          .filter(line => line.trim())
+          .map(line => JSON.parse(line))
+          .reverse(); // reverse 让最新的在前面（与 unshift 一致）
+      }
+      
+      console.log('[wecomtool] 已加载事件历史:', this.eventHistory.length, '条');
+    } catch (e) {
+      console.log('[wecomtool] 加载事件历史失败:', e.message);
+    }
+  }
+
   // ========== 事件处理器 ==========
 
   /**
    * 通讯录变更事件
    */
+  /**
+   * 通讯录变更事件（通用）
+   * 关键字段: ChangeType(1=新增 2=更新 3=删除), UserID, Name, Department
+   */
   async handleContactChange(event, record) {
-    console.log('[Callback] 通讯录变更:', event);
-    return { handled: true };
+    const ct = event.ChangeType || event.change_type || 0;
+    const ctMap = {1:'新增', 2:'更新', 3:'删除'};
+    record.changeType = ct;
+    record.userId = event.UserID || event.userid || '';
+    record.name = event.Name || event.name || '';
+    record.department = event.Department || event.department || [];
+    record.changeTypeText = ctMap[ct] || '变更(' + ct + ')';
+    console.log('[Callback] 通讯录变更: ' + record.changeTypeText + ' UserId=' + record.userId);
+    return { handled: true, changeType: record.changeTypeText, userId: record.userId };
   }
 
   /**
    * 外部联系人变更事件
    */
+  /**
+   * 外部联系人变更事件
+   * 关键字段: ChangeType(1=新增 4=删除), UserID, ExternalUserId
+   */
   async handleExternalContactChange(event, record) {
-    console.log('[Callback] 外部联系人变更:', event);
-    return { handled: true };
+    const changeType = event.ChangeType || event.change_type || 0;
+    const userId = event.UserID || event.userid || '';
+    const externalUserId = event.ExternalUserId || event.external_userid || '';
+    record.changeType = changeType;
+    record.userId = userId;
+    record.externalUserId = externalUserId;
+    const actionMap = {1:'新增', 4:'删除'};
+    record.action = actionMap[changeType] || '变更(' + changeType + ')';
+    console.log('[Callback] 外部联系人变更: ' + record.action + ' UserId=' + userId + ' ExternalUserId=' + externalUserId);
+    return { handled: true, changeType: record.action, userId, externalUserId };
   }
 
   /**
    * 添加外部联系人
+   * 关键字段: UserID, ExternalUserId, WelcomeCode
    */
   async handleAddExternalContact(event, record) {
-    console.log('[Callback] 添加外部联系人:', event);
+    record.userId = event.UserID || event.userid || '';
+    record.externalUserId = event.ExternalUserId || event.external_userid || '';
+    record.welcomeCode = event.WelcomeCode || event.welcome_code || '';
+    console.log('[Callback] 添加外部联系人: UserId=' + record.userId + ' ExternalUserId=' + record.externalUserId);
     this.emit('external_contact:add', event, record);
-    return { handled: true };
+    return { handled: true, userId: record.userId, externalUserId: record.externalUserId };
   }
 
   /**
    * 删除外部联系人
+   * 关键字段: UserID, ExternalUserId
    */
   async handleDelExternalContact(event, record) {
-    console.log('[Callback] 删除外部联系人:', event);
+    record.userId = event.UserID || event.userid || '';
+    record.externalUserId = event.ExternalUserId || event.external_userid || '';
+    console.log('[Callback] 删除外部联系人: UserId=' + record.userId + ' ExternalUserId=' + record.externalUserId);
     this.emit('external_contact:del', event, record);
-    return { handled: true };
+    return { handled: true, userId: record.userId, externalUserId: record.externalUserId };
   }
 
   /**
    * 编辑外部联系人
    */
+  /**
+   * 编辑外部联系人
+   * 关键字段: UserID, ExternalUserId
+   */
   async handleEditExternalContact(event, record) {
-    console.log('[Callback] 编辑外部联系人:', event);
-    return { handled: true };
+    record.userId = event.UserID || event.userid || '';
+    record.externalUserId = event.ExternalUserId || event.external_userid || '';
+    console.log('[Callback] 编辑外部联系人: UserId=' + record.userId + ' ExternalUserId=' + record.externalUserId);
+    return { handled: true, userId: record.userId, externalUserId: record.externalUserId };
   }
 
   /**
    * 添加半程外部联系人
    */
+  /**
+   * 添加半程外部联系人
+   * 关键字段: UserID, ExternalUserId, HalfAuthChangeType
+   */
   async handleAddHalfExternalContact(event, record) {
-    console.log('[Callback] 添加半程外部联系人:', event);
-    return { handled: true };
+    record.userId = event.UserID || event.userid || '';
+    record.externalUserId = event.ExternalUserId || event.external_userid || '';
+    record.halfAuthChangeType = event.HalfAuthChangeType || event.half_auth_change_type || 0;
+    console.log('[Callback] 添加半程外部联系人: UserId=' + record.userId + ' ExternalUserId=' + record.externalUserId);
+    return { handled: true, userId: record.userId, externalUserId: record.externalUserId };
   }
 
   /**
    * 删除跟进成员
+   * 关键字段: UserID, ExternalUserId
    */
   async handleDelFollowUser(event, record) {
-    console.log('[Callback] 删除跟进成员:', event);
-    return { handled: true };
+    record.userId = event.UserID || event.userid || '';
+    record.externalUserId = event.ExternalUserId || event.external_userid || '';
+    console.log('[Callback] 删除跟进成员: UserId=' + record.userId + ' ExternalUserId=' + record.externalUserId);
+    return { handled: true, userId: record.userId, externalUserId: record.externalUserId };
+  }
+
+  /**
+   * 客户接替失败
+   * 事件Key: transfer_fail
+   * 关键字段: UserID, ExternalUserId, FailReason
+   */
+  async handleTransferFail(event, record) {
+    record.userId = event.UserID || event.userid || '';
+    record.externalUserId = event.ExternalUserId || event.external_userid || '';
+    record.failReason = event.FailReason || event.fail_reason || '';
+    console.log('[Callback] 客户接替失败: UserId=' + record.userId + ' ExternalUserId=' + record.externalUserId + ' Reason=' + record.failReason);
+    return { handled: true, userId: record.userId, failReason: record.failReason };
   }
 
   /**
    * 客户群创建
+   * 关键字段: ChatId, Creator, CreateTime, MemberCount
    */
   async handleCreateChat(event, record) {
-    console.log('[Callback] 客户群创建:', event);
+    record.chatId = event.ChatId || event.chat_id || '';
+    record.creator = event.Creator || event.creator || '';
+    record.createTime = event.CreateTime || event.create_time || 0;
+    record.memberCount = event.MemberCount || event.member_count || 0;
+    console.log('[Callback] 客户群创建: ChatId=' + record.chatId + ' Creator=' + record.creator);
     this.emit('group_chat:create', event, record);
-    return { handled: true };
+    return { handled: true, chatId: record.chatId, creator: record.creator };
   }
 
   /**
    * 客户群变更
+   * 关键字段: ChatId, UpdateType, UpdateDetail
    */
   async handleUpdateChat(event, record) {
-    console.log('[Callback] 客户群变更:', event);
+    record.chatId = event.ChatId || event.chat_id || '';
+    record.updateType = event.UpdateType || event.update_type || '';
+    record.updateDetail = event.UpdateDetail || event.update_detail || '';
+    console.log('[Callback] 客户群变更: ChatId=' + record.chatId + ' UpdateType=' + record.updateType);
     this.emit('group_chat:update', event, record);
-    return { handled: true };
+    return { handled: true, chatId: record.chatId, updateType: record.updateType };
   }
 
   /**
    * 客户群解散
+   * 关键字段: ChatId, Creator, CreateTime
    */
   async handleDismissChat(event, record) {
-    console.log('[Callback] 客户群解散:', event);
+    record.chatId = event.ChatId || event.chat_id || '';
+    record.creator = event.Creator || event.creator || '';
+    record.createTime = event.CreateTime || event.create_time || 0;
+    console.log('[Callback] 客户群解散: ChatId=' + record.chatId + ' Creator=' + record.creator);
     this.emit('group_chat:dismiss', event, record);
-    return { handled: true };
+    return { handled: true, chatId: record.chatId };
   }
 
   /**
@@ -550,22 +743,123 @@ class Callback extends EventEmitter {
   }
 
   /**
-   * 审批事件
+   * 审批事件（提交）
+   */
+  /**
+   * 审批提交事件
+   * 事件Key: approval_submit
+   * 关键字段: ApprovalId, SpStatus, SubmitterUserid, TaskId, UniqueId
    */
   async handleSubmitApproval(event, record) {
-    console.log('[Callback] 提交审批:', event);
+    const approvalId = event.ApprovalId || event.approval_id || '';
+    const spStatus = event.SpStatus || event.sp_status || 0;
+    const submitter = event.SubmitterUserid || event.submitter_userid || '';
+    const taskId = event.TaskId || event.task_id || '';
+    const uniqueId = event.UniqueId || event.unique_id || '';
+    record.approvalId = approvalId;
+    record.spStatus = spStatus;
+    record.submitter = submitter;
+    record.taskId = taskId;
+    record.uniqueId = uniqueId;
+    record.statusText = this._getApprovalStatusText(spStatus);
+    console.log('[Callback] 审批提交: ApprovalId=' + approvalId + ' Status=' + record.statusText + ' Submitter=' + submitter);
+    await this._fetchAndSaveApprovalDetail(event, record, 'submit');
     this.emit('approval:submit', event, record);
+    return { handled: true, approvalId, spStatus: record.statusText };
+  }
+
+  /**
+   * 审批变更事件（官方 key: sys_approval_change）
+   * 关键字段: ApprovalId, SpStatus, OpenSpid
+   */
+  async handleSysApprovalChange(event, record) {
+    const approvalId = event.ApprovalId || event.approval_id || '';
+    const spStatus = event.SpStatus || event.sp_status || 0;
+    const openSpid = event.OpenSpid || event.open_spid || '';
+    record.approvalId = approvalId;
+    record.spStatus = spStatus;
+    record.openSpid = openSpid;
+    record.statusText = this._getApprovalStatusText(spStatus);
+    console.log('[Callback] 审批变更: ApprovalId=' + approvalId + ' Status=' + record.statusText);
+    await this._fetchAndSaveApprovalDetail(event, record, 'change');
+    this.emit('approval:change', event, record);
+    return { handled: true, approvalId, spStatus: record.statusText };
+  }
+
+  /**
+   * 审批通过/变更事件（兼容旧 key: Approval）
+   */
+  async handleApproval(event, record) {
+    const approvalId = event.ApprovalId || event.approval_id || '';
+    const spStatus = event.SpStatus || event.sp_status || 0;
+    record.approvalId = approvalId;
+    record.spStatus = spStatus;
+    record.statusText = this._getApprovalStatusText(spStatus);
+    console.log('[Callback] 审批变更(Approval): ApprovalId=' + approvalId + ' Status=' + record.statusText);
+    await this._fetchAndSaveApprovalDetail(event, record, 'change');
+    this.emit('approval:pass', event, record);
+    return { handled: true, approvalId, spStatus: record.statusText };
+  }
+
+  /** 审批状态码转文本 */
+  _getApprovalStatusText(spStatus) {
+    const map = { 1:'审批中', 2:'已通过', 3:'已驳回', 4:'已撤回', 5:'未提交', 6:'已通过', 7:'已驳回', 8:'已转交', 10:'已完成', 11:'已取消' };
+    return map[spStatus] || '状态'+spStatus;
+  }
+
+
+  /**
+   * 审批通过/变更事件
+   */
+  async handleApproval(event, record) {
+    console.log('[Callback] 审批变更:', event);
+    // 获取审批详情并保存
+    await this._fetchAndSaveApprovalDetail(event, record, 'change');
+    this.emit('approval:pass', event, record);
     return { handled: true };
   }
 
   /**
-   * 审批通过事件
+   * 根据回调时间拉取审批详情并保存
+   * @param {object} event 事件对象
+   * @param {object} record 记录对象
+   * @param {string} trigger 触发类型 submit|change
    */
-  async handleApproval(event, record) {
-    console.log('[Callback] 审批通过:', event);
-    this.emit('approval:pass', event, record);
-    return { handled: true };
+  async _fetchAndSaveApprovalDetail(event, record, trigger) {
+    try {
+      const callbackTime = (event.CreateTime || record.createTime || 0) * 1000;
+      const endTime = Math.floor(Date.now() / 1000);
+      const startTime = endTime - 600;
+
+      const idListRes = await this.approval.getApprovalIds(startTime, endTime);
+      const spNoList = idListRes?.sp_no_list || [];
+
+      if (spNoList.length === 0) {
+        console.log('[Callback] 未找到审批单（' + trigger + '）');
+        return;
+      }
+
+      const matchedSpNo = spNoList[0];
+      const detail = await this.approval.getApprovalDetail(matchedSpNo);
+      if (detail?.errcode === 0 || detail?.sp_detail) {
+        record.spNo = matchedSpNo;
+        record.approvalDetail = detail.sp_detail || detail;
+        record.fetchTime = new Date().toISOString();
+        this._appendToFile('approval_detail.jsonl', {
+          sp_no: matchedSpNo, trigger,
+          callback_time: new Date(callbackTime).toISOString(),
+          fetch_time: record.fetchTime,
+          detail: record.approvalDetail, raw: event
+        });
+        console.log('[Callback] 审批详情已保存: ' + matchedSpNo);
+      } else {
+        console.log('[Callback] 获取审批详情失败: ' + (detail?.errmsg || JSON.stringify(detail).slice(0, 100)));
+      }
+    } catch (e) {
+      console.log('[Callback] _fetchAndSaveApprovalDetail 异常: ' + e.message);
+    }
   }
+
 
   /**
    * 打卡事件
@@ -578,20 +872,44 @@ class Callback extends EventEmitter {
   /**
    * 会议开始
    */
+  /**
+   * 会议开始
+   * 关键字段: MeetingId, RoomId, Topic, StartTime, EndTime, JoinUrl, HostUserId
+   */
   async handleMeetingStart(event, record) {
-    console.log('[Callback] 会议开始:', event);
+    record.meetingId = event.MeetingId || event.meeting_id || '';
+    record.roomId = event.RoomId || event.room_id || '';
+    record.topic = event.Topic || event.topic || '';
+    record.startTime = event.StartTime || event.start_time || 0;
+    record.endTime = event.EndTime || event.end_time || 0;
+    record.joinUrl = event.JoinUrl || event.join_url || '';
+    record.hostUserId = event.HostUserId || event.host_user_id || '';
+    console.log('[Callback] 会议开始: MeetingId=' + record.meetingId + ' Topic=' + record.topic + ' Host=' + record.hostUserId);
     this.emit('meeting:start', event, record);
-    return { handled: true };
+    return { handled: true, meetingId: record.meetingId, topic: record.topic };
   }
+
 
   /**
    * 会议结束
    */
+  /**
+   * 会议结束
+   * 关键字段: MeetingId, RoomId, Topic, StartTime, EndTime, HostUserId, RemainDuration
+   */
   async handleMeetingEnd(event, record) {
-    console.log('[Callback] 会议结束:', event);
+    record.meetingId = event.MeetingId || event.meeting_id || '';
+    record.roomId = event.RoomId || event.room_id || '';
+    record.topic = event.Topic || event.topic || '';
+    record.startTime = event.StartTime || event.start_time || 0;
+    record.endTime = event.EndTime || event.end_time || 0;
+    record.hostUserId = event.HostUserId || event.host_user_id || '';
+    record.remainDuration = event.RemainDuration || event.remain_duration || 0;
+    console.log('[Callback] 会议结束: MeetingId=' + record.meetingId + ' Topic=' + record.topic);
     this.emit('meeting:end', event, record);
-    return { handled: true };
+    return { handled: true, meetingId: record.meetingId, topic: record.topic };
   }
+
 
   // ========== 新增的回调处理器实现 ==========
 
@@ -661,29 +979,69 @@ class Callback extends EventEmitter {
   /**
    * 成员变更通知
    */
+  /**
+   * 成员变更事件
+   * 关键字段: ChangeType, UserID, NewUserID, Name, Department, Position
+   */
   async handleChangeMember(event, record) {
-    console.log('[Callback] 成员变更:', event);
+    const ct = event.ChangeType || event.change_type || 0;
+    record.changeType = ct;
+    record.userId = event.UserID || event.userid || '';
+    record.newUserId = event.NewUserID || event.new_userid || '';
+    record.name = event.Name || event.name || '';
+    record.department = event.Department || event.department || [];
+    record.position = event.Position || event.position || '';
+    const ctMap = {1:'新增', 2:'更新', 3:'删除'};
+    record.changeTypeText = ctMap[ct] || '变更('+ct+')';
+    console.log('[Callback] 成员变更: ' + record.changeTypeText + ' UserId=' + record.userId + ' Name=' + record.name);
     this.emit('contact:member_change', event, record);
-    return { handled: true };
+    return { handled: true, changeType: record.changeTypeText, userId: record.userId };
   }
+
 
   /**
    * 部门变更通知
    */
+  /**
+   * 部门变更事件
+   * 关键字段: ChangeType, Id, Name, ParentId, Order
+   */
   async handleChangeDepartment(event, record) {
-    console.log('[Callback] 部门变更:', event);
+    const ct = event.ChangeType || event.change_type || 0;
+    record.changeType = ct;
+    record.deptId = event.Id || event.id || '';
+    record.name = event.Name || event.name || '';
+    record.parentId = event.ParentId || event.parentid || '';
+    record.order = event.Order || event.order || 0;
+    const ctMap = {1:'新增', 2:'更新', 3:'删除'};
+    record.changeTypeText = ctMap[ct] || '变更('+ct+')';
+    console.log('[Callback] 部门变更: ' + record.changeTypeText + ' DeptId=' + record.deptId + ' Name=' + record.name);
     this.emit('contact:department_change', event, record);
-    return { handled: true };
+    return { handled: true, changeType: record.changeTypeText, deptId: record.deptId };
   }
+
 
   /**
    * 标签变更通知
    */
+  /**
+   * 标签变更事件
+   * 关键字段: ChangeType, TagId, TagName, AddUserIds, DelUserIds
+   */
   async handleChangeTag(event, record) {
-    console.log('[Callback] 标签变更:', event);
+    const ct = event.ChangeType || event.change_type || 0;
+    record.changeType = ct;
+    record.tagId = event.TagId || event.tagid || '';
+    record.tagName = event.TagName || event.tagname || '';
+    record.addUserIds = event.AddUserIds || event.add_userids || [];
+    record.delUserIds = event.DelUserIds || event.del_userids || [];
+    const ctMap = {1:'新增', 2:'更新', 3:'删除'};
+    record.changeTypeText = ctMap[ct] || '变更('+ct+')';
+    console.log('[Callback] 标签变更: ' + record.changeTypeText + ' TagId=' + record.tagId + ' TagName=' + record.tagName);
     this.emit('contact:tag_change', event, record);
-    return { handled: true };
+    return { handled: true, changeType: record.changeTypeText, tagId: record.tagId };
   }
+
 
   /**
    * 会议真正结束（历史记录生成后）
@@ -697,20 +1055,38 @@ class Callback extends EventEmitter {
   /**
    * 参会成员加入
    */
+  /**
+   * 参会成员加入
+   * 关键字段: MeetingId, RoomId, ParticipantUserId, JoinTime
+   */
   async handleMeetingParticipantJoin(event, record) {
-    console.log('[Callback] 参会成员加入:', event);
+    record.meetingId = event.MeetingId || event.meeting_id || '';
+    record.roomId = event.RoomId || event.room_id || '';
+    record.participantUserId = event.ParticipantUserId || event.participant_userid || event.UserId || '';
+    record.joinTime = event.JoinTime || event.join_time || 0;
+    console.log('[Callback] 参会成员加入: MeetingId=' + record.meetingId + ' User=' + record.participantUserId);
     this.emit('meeting:participant_join', event, record);
-    return { handled: true };
+    return { handled: true, meetingId: record.meetingId, participantUserId: record.participantUserId };
   }
+
 
   /**
    * 参会成员离开
    */
+  /**
+   * 参会成员离开
+   * 关键字段: MeetingId, RoomId, ParticipantUserId, LeaveTime
+   */
   async handleMeetingParticipantLeave(event, record) {
-    console.log('[Callback] 参会成员离开:', event);
+    record.meetingId = event.MeetingId || event.meeting_id || '';
+    record.roomId = event.RoomId || event.room_id || '';
+    record.participantUserId = event.ParticipantUserId || event.participant_userid || event.UserId || '';
+    record.leaveTime = event.LeaveTime || event.leave_time || 0;
+    console.log('[Callback] 参会成员离开: MeetingId=' + record.meetingId + ' User=' + record.participantUserId);
     this.emit('meeting:participant_leave', event, record);
-    return { handled: true };
+    return { handled: true, meetingId: record.meetingId, participantUserId: record.participantUserId };
   }
+
 
   /**
    * 直播状态变更

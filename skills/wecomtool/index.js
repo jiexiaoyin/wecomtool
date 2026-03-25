@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const WeComPlugin = require('../src/index');
+const WeComPlugin = require('/root/.openclaw/extensions/wecomtool/src/index');
 
 // 配置文件路径
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');

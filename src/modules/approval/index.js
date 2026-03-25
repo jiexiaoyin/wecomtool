@@ -34,27 +34,27 @@ class Approval extends WeComSDK {
   }
 
   /**
-   * 批量获取审批单号
+   * 批量获取审批单号（正确路径：/oa/getapprovalinfo）
    * @param {number} startTime 开始时间戳
    * @param {number} endTime 结束时间戳
-   * @param {number} cursor 分页游标
+   * @param {string} cursor 分页游标
    * @param {number} size 每页数量
    */
-  async getApprovalIds(startTime, endTime, cursor = 0, size = 100) {
-    return this.post('/approval/list', {
+  async getApprovalIds(startTime, endTime, cursor = '', size = 100) {
+    return this.post('/oa/getapprovalinfo', {
       starttime: startTime,
       endtime: endTime,
-      cursor,
-      size
+      cursor: cursor,
+      limit: size
     });
   }
 
   /**
-   * 获取审批申请详情
+   * 获取审批申请详情（正确路径：/oa/getapprovaldetail）
    * @param {string} spNo 审批单号
    */
   async getApprovalDetail(spNo) {
-    return this.post('/approval/get', { sp_no: spNo });
+    return this.post('/oa/getapprovaldetail', { sp_no: spNo });
   }
 
   /**
