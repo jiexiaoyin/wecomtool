@@ -28,21 +28,24 @@
 
 ## 安装
 
-### 方式一：Git 克隆
+### 方式一：npm 安装（推荐）
 
 ```bash
-# 克隆到扩展目录
-git clone https://github.com/jiexiaoyin/openclaw-wecom-api.git /root/.openclaw/extensions/wecom-api
-
-# 安装依赖
-cd /root/.openclaw/extensions/wecom-api
-npm install
+openclaw plugins install @jiexiaoyin/wecom-api
 ```
 
-### 方式二：OpenClaw CLI
+### 方式二：OpenClaw CLI（Git 克隆）
 
 ```bash
 openclaw plugins install https://github.com/jiexiaoyin/openclaw-wecom-api
+```
+
+### 方式三：手动克隆
+
+```bash
+git clone https://github.com/jiexiaoyin/openclaw-wecom-api.git /root/.openclaw/extensions/wecom-api
+cd /root/.openclaw/extensions/wecom-api
+npm install
 ```
 
 ## 配置
@@ -64,6 +67,8 @@ openclaw plugins install https://github.com/jiexiaoyin/openclaw-wecom-api
 ```
 
 ### 2. 创建 config.json
+
+npm 安装方式会自动注册插件到 `openclaw.json`，但需要手动创建配置：
 
 ```bash
 cd /root/.openclaw/extensions/wecom-api
@@ -206,6 +211,11 @@ openclaw-wecom-api/
 ## 更新
 
 ```bash
+# npm 安装方式
+openclaw plugins update @jiexiaoyin/wecom-api
+systemctl --user restart openclaw-gateway
+
+# 或手动更新
 cd /root/.openclaw/extensions/wecom-api
 git pull
 npm install
