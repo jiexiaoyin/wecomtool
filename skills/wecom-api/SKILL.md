@@ -1,6 +1,6 @@
 # WeCom API Skill
 
-企业微信 API 调用技能，支持客户管理、审批、会议、打卡、通讯录、素材等操作。
+企业微信 API 调用技能，支持客户管理、审批、会议、打卡、通讯录、日程等操作。
 
 > 💡 注意：消息发送统一由 @sunnoy/wecom 通道处理，本技能不暴露发送消息相关动作。媒体上传下载也由 @sunnoy/wecom 统一处理。
 
@@ -26,7 +26,7 @@
 
 ## 支持的动作
 
-### 👥 客户联系
+### 👥 客户管理
 
 | 动作 | 说明 |
 |------|------|
@@ -34,7 +34,11 @@
 | `get_customer_detail` | 获取客户详情 |
 | `get_external_user_info` | 获取外部联系人信息 |
 | `batch_get_customers` | 批量获取客户详情 |
+| `get_all_customers` | 获取全部客户列表 |
+| `get_all_customer_detail` | 获取客户详情（独立接口） |
+| `batch_get_customers_by_user` | 批量按用户获取客户 |
 | `update_customer_remark` | 更新客户备注 |
+| `mark_customer_tag` | 标记/取消客户标签 |
 | `get_corp_tags` | 获取企业标签 |
 | `add_corp_tag` | 添加企业标签 |
 | `update_corp_tag` | 更新标签 |
@@ -125,7 +129,7 @@
 
 | 动作 | 说明 |
 |------|------|
-| `status` / `show_config` | 查看当前配置 |
+| `status` | 查看当前配置 |
 | `test_connection` | 测试连接 |
 
 ## 使用示例
@@ -135,7 +139,6 @@
 查询昨天的打卡记录
 创建一个会议，主题是周会，时间是明天下午2点
 查一下客户统计，从3月1日到3月7日
-上传图片到素材库
 获取审批列表，3月1日到3月7日
 给李四添加客户备注
 查一下客户群列表
