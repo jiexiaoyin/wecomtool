@@ -76,9 +76,8 @@ cp config.example.json config.json
   "corpId": "你的企业ID",
   "corpSecret": "你的应用Secret",
   "agentId": "你的应用AgentID",
-  "token": "回调Token（独立模式必填）",
-  "encodingAESKey": "EncodingAESKey（独立模式必填）",
-  "callbackMode": "independent"
+  "token": "回调Token",
+  "encodingAESKey": "EncodingAESKey"
 }
 ```
 
@@ -87,9 +86,8 @@ cp config.example.json config.json
 | corpId | 企业ID | ✅ |
 | corpSecret | 应用Secret | ✅ |
 | agentId | 应用AgentID | ✅ |
-| token | 回调Token（独立模式必填） | 独立模式 ✅ |
-| encodingAESKey | 回调加密Key（独立模式必填） | 独立模式 ✅ |
-| callbackMode | `independent`（独立）或 `shared`（共用） | 否，默认 independent |
+| token | 回调Token | ✅ |
+| encodingAESKey | 回调加密Key | ✅ |
 
 ### 3. 重启 OpenClaw
 
@@ -106,29 +104,26 @@ nohup systemctl --user restart openclaw-gateway > /tmp/restart.log 2>&1 &
 - 填写「URL」：`https://你的域名/plugins/wecom-api/callback`
 - 填写「Token」和「EncodingAESKey」：与 config.json 中一致
 
-> 💡 **提示**：如果与 @sunnoy/wecom 共用一个应用，请使用 `shared` 模式，并将两个插件的回调路径都指向同一个应用。
+## 与 @sunnoy/wecom 共用一个应用
 
-## 两种工作模式
+当本插件与 @sunnoy/wecom 共用同一个企业微信应用时，需要使用 Nginx Mirror 将企业微信的回调同时分发给两个插件：
 
-### 独立模式（默认）
+```nginx
+# 企业微信回调入口（@sunnoy/wecom 的路径）
+location /plugins/wecom/agent/default {
+    mirror /plugins/wecom-api/callback;
+    mirror_request_body on;
+    proxy_pass http://127.0.0.1:18789;
+}
 
-适合单独使用本插件，不依赖其他通道插件。
-
-```
-企业微信 → 加密消息 → openclaw-wecom-api → 验证签名 → 解密 → 处理
-```
-
-### 共用模式（shared）
-
-适合与 @sunnoy/wecom 共用同一个企业微信应用。
-
-```
-企业微信 → 加密消息 → @sunnoy/wecom → 验证签名 → 解密 → 转发
-                                                      ↓ mirror
-                                            openclaw-wecom-api → 处理
+# openclaw-wecom-api 的回调路径（mirror 目标）
+location = /plugins/wecom-api/callback {
+    internal;
+    proxy_pass http://127.0.0.1:18789;
+}
 ```
 
-配置 `callbackMode: "shared"`，Token 和 EncodingAESKey 可留空。
+两者共用同一套凭证（corpId / corpSecret / token / encodingAESKey），各自验证签名、解析消息，互不干扰。
 
 ## 使用方式
 

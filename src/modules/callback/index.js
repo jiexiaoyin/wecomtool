@@ -27,7 +27,7 @@ class Callback extends EventEmitter {
     this.encodingAESKey = config.encodingAESKey || '';
     this.corpId = config.corpId || '';
     this.agentId = config.agentId || '';
-    this.callbackMode = config.callbackMode || 'shared';  // shared 或 independent
+    this.callbackMode = 'independent';
     
     // 事件记录存储
     this.eventHistory = [];
@@ -333,16 +333,10 @@ class Callback extends EventEmitter {
     console.log('[wecom-api] parsed xml Encrypt length:', xml.Encrypt ? xml.Encrypt.length : 'null');
     const encrypt = xml.Encrypt;
     
-    // 根据模式决定是否验证签名
-    if (this.callbackMode === 'shared') {
-      // shared 模式：wecom 已验证过签名，跳过
-      console.log('[wecom-api] 跳过签名验证（shared 模式，由 wecom 统一验证）');
-    } else {
-      // independent 模式：必须验证签名
-      console.log('[wecom-api] 验证签名（independent 模式）');
-      if (!this.verifyMessage(msgSignature, timestamp, nonce, encrypt)) {
-        throw new Error('签名验证失败');
-      }
+    // 验证签名
+    console.log('[wecom-api] 验证签名');
+    if (!this.verifyMessage(msgSignature, timestamp, nonce, encrypt)) {
+      throw new Error('签名验证失败');
     }
     
     // 解密消息

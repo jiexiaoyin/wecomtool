@@ -95,7 +95,7 @@ const plugin = {
     // 创建回调处理器
     callbackHandler = createCallbackHandler({
       callbackInstance,
-      mode: config.callbackMode || 'independent',
+      mode: 'independent',
       alwaysReturnSuccess: true,
       onMessage: (message, info) => {
         const eventType = message.Event || message.MsgType || 'unknown';
