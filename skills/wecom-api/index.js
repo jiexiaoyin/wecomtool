@@ -230,24 +230,132 @@ async function executeAction(action, params) {
   const wecom = getWecom();
   const args = { ...params };
   delete args.action;
-  
+
   try {
     switch (action) {
+
+      // ========== 消息发送 ==========
       case 'send_message':
         return await wecom.message.sendText(args.userId, args.content, args.agentId);
-      
+
+      case 'send_text':
+        return await wecom.message.sendText(args.toUser, args.content, args.agentId);
+
+      case 'send_text_card':
+        return await wecom.message.sendTextCard(args.toUser, args.title, args.content, args.agentId);
+
+      case 'send_markdown':
+        return await wecom.message.sendMarkdown(args.toUser, args.content, args.agentId);
+
+      case 'send_template_card':
+        return await wecom.message.sendTemplateCard(args.toUser, args.templateCard, args.agentId);
+
+      case 'send_image':
+        return await wecom.message.sendImage(args.toUser, args.mediaId, args.agentId);
+
+      case 'send_file':
+        return await wecom.message.sendFile(args.toUser, args.mediaId, args.agentId);
+
+      case 'send_video':
+        return await wecom.message.sendVideo(args.toUser, args.mediaId, args.agentId);
+
+      case 'send_news':
+        return await wecom.message.sendNews(args.toUser, args.articles, args.agentId);
+
+      // ========== 客户联系 ==========
       case 'get_customer_list':
-        return await wecom.contact.getCustomerList(args.userId);
-      
+        return await wecom.contact.getCustomerList(args.userId, args.cursor);
+
       case 'get_customer_detail':
         return await wecom.contact.getCustomerDetail(args.userId, args.externalUserId);
-      
+
+      case 'get_external_user_info':
+        return await wecom.contact.getExternalUserInfo(args.userId);
+
+      case 'batch_get_customers':
+        return await wecom.contact.batchGetCustomers(args.userId, args.externalUserIds);
+
+      case 'update_customer_remark':
+        return await wecom.contact.updateCustomerRemark(args.userId, args.externalUserId, {
+          remark: args.remark,
+          description: args.description,
+          tagIds: args.tagIds
+        });
+
+      case 'get_corp_tags':
+        return await wecom.contact.getCorpTags();
+
+      case 'add_corp_tag':
+        return await wecom.contact.addCorpTag(args.groupId, args.tagName, args.groupName);
+
+      case 'update_corp_tag':
+        return await wecom.contact.updateCorpTag(args.tagId, args.tagName);
+
+      case 'get_groupchat_list':
+        return await wecom.contact.getGroupChatList(args.statusFilter, args.creatorUserid, args.limit, args.cursor);
+
+      case 'get_groupchat':
+        return await wecom.contact.getGroupChat(args.chatId);
+
+      // ========== 客户管理（独立模块） ==========
+      case 'get_all_customers':
+        return await wecom.customer.getCustomerList(args.userid);
+
+      case 'get_all_customer_detail':
+        return await wecom.customer.getCustomerDetail(args.externalUserId);
+
+      case 'batch_get_customers_by_user':
+        return await wecom.customer.batchGetByUser(args.userids);
+
+      case 'mark_customer_tag':
+        return await wecom.customer.markTag(args.externalUserId, args.tagIds, args.userid, args.operation);
+
+      // ========== 客户统计 ==========
+      case 'get_user_client_stat':
+        return await wecom.contact_stats.getUserClientStat(args.userId, args.startDate, args.endDate);
+
+      case 'get_all_user_client_stat':
+        return await wecom.contact_stats.getAllUserClientStat(args.startDate, args.endDate);
+
+      case 'get_user_client_detail':
+        return await wecom.contact_stats.getUserClientDetail(args.userId, args.startDate, args.endDate);
+
+      case 'get_group_chat_stat':
+        return await wecom.contact_stats.getGroupChatStat(args.startDate, args.endDate, args.userId, args.departmentId);
+
+      case 'get_user_lost_stat':
+        return await wecom.contact_stats.getUserLostStat(args.startDate, args.endDate, args.userId);
+
+      // ========== 审批 ==========
       case 'get_approval_list':
-        return await wecom.approval.getApprovalIds(args.startTime, args.endTime);
-      
+        return await wecom.approval.getApprovalIds(args.startTime, args.endTime, args.cursor, args.size);
+
       case 'get_approval_detail':
         return await wecom.approval.getApprovalDetail(args.spNo);
-      
+
+      case 'get_template_detail':
+        return await wecom.approval.getTemplateDetail(args.templateId);
+
+      case 'submit_approval':
+        return await wecom.approval.submitApproval({
+          templateId: args.templateId,
+          callerUserid: args.userId,
+          ...args.approvalData
+        });
+
+      case 'get_leave_config':
+        return await wecom.approval.getLeaveConfig();
+
+      case 'get_leave_balance':
+        return await wecom.approval.getLeaveBalance(args.userId);
+
+      case 'create_template':
+        return await wecom.approval.createTemplate(args.templateData);
+
+      case 'update_template':
+        return await wecom.approval.updateTemplate(args.templateId, args.templateData);
+
+      // ========== 会议 ==========
       case 'create_meeting':
         return await wecom.meeting.createMeeting({
           topic: args.topic,
@@ -255,28 +363,125 @@ async function executeAction(action, params) {
           endTime: args.endTime,
           organizers: [args.userId]
         });
-      
+
+      case 'get_meeting_list':
+        return await wecom.meeting.getMeetingList(args.userId, args.startTime, args.endTime, args.cursor);
+
+      case 'get_meeting_detail':
+        return await wecom.meeting.getMeetingDetail(args.meetingId);
+
+      case 'cancel_meeting':
+        return await wecom.meeting.cancelMeeting(args.meetingId, args.userId);
+
+      case 'invite_meeting':
+        return await wecom.meeting.inviteMeeting(args.meetingId, args.userIds);
+
+      // ========== 通讯录 ==========
       case 'get_user_list':
         return await wecom.addressbook.getDepartmentUsers(args.departmentId || 1, args.fetchChild || false);
-      
+
+      case 'get_department_users_detail':
+        return await wecom.addressbook.getDepartmentUsersDetail(args.departmentId || 1, args.fetchChild || false);
+
       case 'get_department_list':
         return await wecom.addressbook.getDepartmentList(args.departmentId);
-      
+
+      case 'get_user':
+        return await wecom.addressbook.getUser(args.userId);
+
+      case 'get_user_by_mobile':
+        return await wecom.addressbook.getUserIdByMobile(args.mobile);
+
+      case 'get_user_by_email':
+        return await wecom.addressbook.getUserIdByEmail(args.email);
+
+      case 'create_user':
+        return await wecom.addressbook.createUser(args.userData);
+
+      case 'update_user':
+        return await wecom.addressbook.updateUser(args.userData);
+
+      case 'delete_user':
+        return await wecom.addressbook.deleteUser(args.userId);
+
+      // ========== 打卡 ==========
       case 'get_checkin_records':
         return await wecom.checkin.getCheckInRecords(args.startTime, args.endTime, args.userId);
-      
-      case 'get_corp_tags':
-        return await wecom.contact.getCorpTags();
-      
-      case 'get_groupchat_list':
-        return await wecom.contact.getGroupChatList(args.cursor, args.size);
-      
+
+      case 'get_checkin_rules':
+        return await wecom.checkin.getCheckInRules(args.groupId);
+
+      // ========== 日程 ==========
+      case 'create_calendar':
+        return await wecom.schedule.createCalendar({
+          title: args.title,
+          color: args.color,
+          description: args.description,
+          shares: args.shares || []
+        });
+
+      case 'get_calendar':
+        return await wecom.schedule.getCalendar(args.calendarId);
+
+      case 'create_event':
+        return await wecom.schedule.createEvent({
+          calendarId: args.calendarId,
+          title: args.title,
+          startTime: args.startTime,
+          endTime: args.endTime,
+          attendees: args.attendees || [],
+          description: args.description,
+          location: args.location,
+          reminders: args.reminders
+        });
+
+      case 'update_event':
+        return await wecom.schedule.updateEvent(args.scheduleId, {
+          title: args.title,
+          startTime: args.startTime,
+          endTime: args.endTime,
+          attendees: args.attendees,
+          description: args.description,
+          location: args.location
+        });
+
+      case 'delete_event':
+        return await wecom.schedule.deleteEvent(args.scheduleId);
+
+      case 'add_event_attendees':
+        return await wecom.schedule.addEventAttendees(args.scheduleId, args.attendees);
+
+      // ========== 素材 ==========
+      case 'upload_image':
+        return await wecom.media.uploadImage(args.filePath);
+
+      case 'upload_media':
+        return await wecom.media.uploadMedia(args.filePath, args.type);
+
+      case 'get_media':
+        return await wecom.media.getMedia(args.mediaId, args.savePath);
+
+      case 'get_high_definition_voice':
+        return await wecom.media.getHighDefinitionVoice(args.mediaId, args.savePath);
+
+      // ========== 应用 ==========
       case 'get_agent_list':
         return await wecom.app.getAgentList();
-      
+
+      case 'get_agent':
+        return await wecom.app.getAgent(args.agentId);
+
+      case 'set_agent':
+        return await wecom.app.setAgent(args.agentData);
+
+      // ========== 工具 ==========
       case 'get_token':
-        return await wecom.approval.getAccessToken();
-      
+        return await wecom.auth.getAccessToken();
+
+      case 'get_callback_ip':
+        return await wecom.auth.getCallbackIP();
+
+      // ========== 未知 ==========
       default:
         return { message: `未知的操作: ${action}` };
     }
