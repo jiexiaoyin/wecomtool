@@ -1,5 +1,5 @@
 {
-  "name": "wecomtool",
+  "name": "wecom-api",
   "version": "1.0.0",
   "description": "企业微信 API 工具 OpenClaw 插件",
   "main": "src/index.js",
@@ -15,10 +15,10 @@
   ],
   "author": "",
   "license": "MIT",
-  "homepage": "https://github.com/jiexiaoyin/wecomtool#readme",
+  "homepage": "https://github.com/jiexiaoyin/wecom-api#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jiexiaoyin/wecomtool.git"
+    "url": "https://github.com/jiexiaoyin/wecom-api.git"
   },
   "dependencies": {
     "xml2js": "^0.6.2"

@@ -1,317 +1,232 @@
-# wecomtool
+# openclaw-wecom-api
 
-企业微信 API 工具 OpenClaw 插件 | 继承 OpenClaw 端口，零额外配置
+企业微信 API OpenClaw 插件，为 OpenClaw 提供完整的企业微信 API 调用能力和事件回调处理。
 
-## 什么是 wecomtool？
+## 与 @sunnoy/wecom 的关系
 
-wecomtool 是一个企业微信 API 工具，专为 OpenClaw 设计，直接继承 OpenClaw 的 HTTP 端口（80/443），无需额外部署回调服务。
+| 插件 | 职责 | 通道 |
+|------|------|------|
+| **@sunnoy/wecom** | 消息收发（WebSocket 长连接） | `"wecom"` 通道 |
+| **openclaw-wecom-api** | API 调用 + 事件回调 | Skill 方式被 AI 触发 |
 
-## 核心功能
+两者**不冲突**，共用同一套 `corpId`/`corpSecret` 凭证。
 
-- **32+ API 模块**：消息、会议、审批、打卡、客户联系等
-- **智能回调处理**：自动识别加密/明文消息
-- **事件记录**：自动记录所有回调事件
-- **两种模式**：独立加密模式 / 共用明文模式
-- **权限控制**：支持 admin/manager/staff 三级角色
+## 功能特性
 
-## 快速开始
+- **32+ API 模块**：消息、会议、审批、打卡、客户联系、通讯录等
+- **事件回调**：支持客户变更、审批、签到、会议等事件的 HTTP 接收
+- **零额外部署**：继承 OpenClaw HTTP 端口（80/443），无需单独开端口
+- **智能权限控制**：admin / manager / staff 三级数据隔离
+- **回调路径隔离**：与 @sunnoy/wecom 使用不同路径，互不干扰
+
+## HTTP 回调路径
+
+| 插件 | 回调路径 |
+|------|---------|
+| @sunnoy/wecom | `/plugins/wecom/agent/default` |
+| openclaw-wecom-api | `/plugins/wecom-api/callback` |
+
+## 安装
+
+### 方式一：Git 克隆
 
 ```bash
-# 1. 安装
-git clone https://github.com/jiexiaoyin/wecomtool.git /root/.openclaw/extensions/wecomtool
+# 克隆到扩展目录
+git clone https://github.com/jiexiaoyin/openclaw-wecom-api.git /root/.openclaw/extensions/wecom-api
 
-# 2. 配置
-cp config.example.json config.json
-vim config.json
-
-# 3. 重启
-openclaw gateway restart
+# 安装依赖
+cd /root/.openclaw/extensions/wecom-api
+npm install
 ```
 
-## 配置说明
+### 方式二：OpenClaw CLI
+
+```bash
+openclaw plugins install https://github.com/jiexiaoyin/openclaw-wecom-api
+```
+
+## 配置
+
+### 1. 修改 openclaw.json
+
+在 `plugins.entries` 中添加插件注册：
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "wecom-api": {
+        "enabled": true
+      }
+    }
+  }
+}
+```
+
+### 2. 创建 config.json
+
+```bash
+cd /root/.openclaw/extensions/wecom-api
+cp config.example.json config.json
+# 编辑 config.json 填入你的凭证
+```
 
 ```json
 {
   "corpId": "你的企业ID",
   "corpSecret": "你的应用Secret",
   "agentId": "你的应用AgentID",
-  "token": "回调Token",
-  "encodingAESKey": "EncodingAESKey",
+  "token": "回调Token（独立模式必填）",
+  "encodingAESKey": "EncodingAESKey（独立模式必填）",
   "callbackMode": "independent"
 }
 ```
 
-| 参数 | 说明 |
-|------|------|
-| corpId | 企业ID（必填） |
-| corpSecret | 应用Secret（必填） |
-| agentId | 应用AgentID（必填） |
-| token | 回调Token（独立模式必填） |
-| encodingAESKey | 回调加密Key（独立模式必填） |
-| callbackMode | 回调模式：`independent`（独立）或 `shared`（共用） |
+| 参数 | 说明 | 必填 |
+|------|------|------|
+| corpId | 企业ID | ✅ |
+| corpSecret | 应用Secret | ✅ |
+| agentId | 应用AgentID | ✅ |
+| token | 回调Token（独立模式必填） | 独立模式 ✅ |
+| encodingAESKey | 回调加密Key（独立模式必填） | 独立模式 ✅ |
+| callbackMode | `independent`（独立）或 `shared`（共用） | 否，默认 independent |
 
-## 回调模式
+### 3. 重启 OpenClaw
 
-### 模式一：独立模式（默认）
-
-适用于单独使用 wecomtool。
-
-```
-企业微信 → 加密消息 → wecomtool → 验证签名 → 解密 → 处理
+```bash
+systemctl --user restart openclaw-gateway
+# 或
+nohup systemctl --user restart openclaw-gateway > /tmp/restart.log 2>&1 &
 ```
 
-配置：`callbackMode: "independent"`，`token` 和 `encodingAESKey` 必填。
+### 4. 配置企业微信后台
 
-### 模式二：共用模式
+登录 [企业微信管理后台](https://console.work.weixin.qq.com)，找到你的自建应用，在「接收消息」设置中：
 
-适用于与 YanHaidao/wecom 共用回调地址。
+- 填写「URL」：`https://你的域名/plugins/wecom-api/callback`
+- 填写「Token」和「EncodingAESKey」：与 config.json 中一致
+
+> 💡 **提示**：如果与 @sunnoy/wecom 共用一个应用，请使用 `shared` 模式，并将两个插件的回调路径都指向同一个应用。
+
+## 两种工作模式
+
+### 独立模式（默认）
+
+适合单独使用本插件，不依赖其他通道插件。
 
 ```
-企业微信 → 加密消息 → YanHaidao/wecom → 验证签名 → 解密 → 处理
-                              ↓ Nginx mirror
-                        wecomtool → 跳过验证 → 解密 → 处理
+企业微信 → 加密消息 → openclaw-wecom-api → 验证签名 → 解密 → 处理
 ```
 
-配置：`callbackMode: "shared"`，`token` 和 `encodingAESKey` 可留空。
+### 共用模式（shared）
 
-**重要**：共用模式下，wecomtool 跳过签名验证（由 YanHaidao/wecom 统一验证），但仍会解密消息。
+适合与 @sunnoy/wecom 共用同一个企业微信应用。
 
-## Nginx Mirror 配置（共用模式）
-
-```nginx
-# 主插件回调地址
-location /plugins/wecom/callback {
-    mirror /plugins/wecomtool/callback;
-    mirror_request_body on;
-    proxy_pass http://127.0.0.1:18789;
-}
-
-# wecomtool 回调地址（mirror 目标）
-location = /plugins/wecomtool/callback {
-    internal;
-    proxy_pass http://127.0.0.1:18789;
-}
+```
+企业微信 → 加密消息 → @sunnoy/wecom → 验证签名 → 解密 → 转发
+                                                      ↓ mirror
+                                            openclaw-wecom-api → 处理
 ```
 
-## 使用命令
+配置 `callbackMode: "shared"`，Token 和 EncodingAESKey 可留空。
+
+## 使用方式
+
+插件安装后，OpenClaw 会自动注册 Skill，通过自然语言即可调用：
+
+```
+查一下 JieXiaoYin 的客户列表
+发送消息给 张三，内容是测试
+查询昨天的客户统计
+查一下审批列表
+获取通讯录
+```
+
+### 命令行测试
 
 ```bash
 # 测试连接
-/skill wecomtool test_connection
+/skill wecom-api test_connection
 
-# 查看配置
-/skill wecomtool status
-
-# 发送消息
-/skill wecomtool send_message --userId 用户ID --content "你好"
+# 查看配置状态
+/skill wecom-api status
 ```
 
 ## 支持的 API 模块
 
 | 模块 | 说明 |
 |------|------|
-| message | 消息收发 |
-| meeting | 会议管理 |
-| schedule | 日程管理 |
-| approval | 审批管理 |
-| contact | 客户联系 |
-| contact_stats | 客户统计（含智能判断） |
-| addressbook | 通讯录 |
-| checkin | 打卡考勤 |
-| custom | 微信客服 |
-| media | 素材管理 |
-| ... | 更多 |
-
-## ⚠️ 客户统计 API 重要限制
-
-### 数据时效限制
-
-| 数据类型 | 查询方式 | 说明 |
-|----------|----------|------|
-| **历史数据** | API 查询 | 可查询昨天及之前的数据 |
-| **当日数据** | 事件回调 | 只能通过事件回调获取实时数据 |
-
-**原因**：企业微信统计 API 无法查询当天数据。
-
-### 多用户查询限制
-
-| 查询方式 | 返回结果 |
-|----------|----------|
-| 传入多个 userid | 返回**总体数据**，不是每人一条 |
-| 逐个传入 userid | 可获取**个人数据** |
-
-**建议**：如需查看每个员工的统计数据，需循环调用 API。
-
-### 智能统计方法
-
-wecomtool 提供 `getUserClientStatSmart()` 方法，自动判断日期范围：
-
-```javascript
-const wecom = new WeComTool(config);
-const contactStats = wecom.contact_stats;
-
-// 查询最近7天（自动处理今天和历史数据）
-const stats = await contactStats.getUserClientStatSmart(
-  startTime,  // 7天前时间戳
-  endTime,    // 当前时间戳
-  'user1,user2'
-);
-
-// 返回结构
-// {
-//   isTodayIncluded: true,
-//   historical: { ... },  // 历史数据（API返回）
-//   today: {             // 当日实时数据
-//     newCustomers: 5,
-//     lostCustomers: 1,
-//     messagesSent: 23,
-//     chatsCount: 12,
-//     applications: 3
-//   }
-// }
-```
-
-### 事件回调统计
-
-当收到以下事件时，可调用 `updateTodayStats()` 更新当日统计：
-
-| 事件类型 | 统计指标 |
-|----------|----------|
-| `add_external_contact` | 新增客户数 |
-| `del_external_contact` | 删除/拉黑客户数 |
-| `change_external_contact` | 客户变更 |
-| 消息发送事件 | 发送消息数、聊天数 |
-
-```javascript
-// 在事件回调中调用
-contactStats.updateTodayStats('add_external_contact', { userId, externalUserId });
-```
+| `addressbook` | 通讯录管理 |
+| `approval` | 审批管理 |
+| `checkin` | 打卡考勤 |
+| `contact` | 客户联系 |
+| `contact_stats` | 客户统计 |
+| `customer` | 客户管理 |
+| `document` | 文档管理 |
+| `meeting` | 会议管理 |
+| `message` | 消息收发 |
+| `schedule` | 日程管理 |
+| `media` | 素材管理 |
+| ... | 更多模块 |
 
 ## 支持的回调事件
 
-### 客户联系事件
-| 事件 | 说明 |
-|------|------|
-| `add_external_contact` | 添加客户 |
-| `del_external_contact` | 删除客户 |
-| `edit_external_contact` | 编辑客户 |
-| `change_external_contact` | 客户变更 |
-| `add_half_external_contact` | 添加半程客户 |
-| `del_follow_user` | 删除跟进成员 |
-| `transfer_fail` | 分配失败 |
-
-### 客户联系增强事件
-| 事件 | 说明 |
-|------|------|
-| `add_contact_way` | 添加联系我 |
-| `del_contact_way` | 删除联系我 |
-| `add_join_way` | 添加入群方式 |
-| `del_join_way` | 删除入群方式 |
-| `kf_msg_push` | 客服消息推送 |
-| `kf_msg_send` | 客服消息发送 |
-
-### 客户群事件
-| 事件 | 说明 |
-|------|------|
-| `create_chat` | 创建群聊 |
-| `update_chat` | 群聊变更 |
-| `dismiss_chat` | 群聊解散 |
-
-### 通讯录变更事件
-| 事件 | 说明 |
-|------|------|
-| `change_member` | 成员变更 |
-| `change_department` | 部门变更 |
-| `change_tag` | 标签变更 |
-
-### 会议事件
-| 事件 | 说明 |
-|------|------|
-| `meeting_start` | 会议开始 |
-| `meeting_end` | 会议结束 |
-| `meeting_created` | 会议创建 |
-| `meeting_cancelled` | 会议取消 |
-| `meetingParticipantJoin` | 成员加入会议 |
-| `meetingParticipantLeave` | 成员离开会议 |
-
-### 消息事件
-| 事件 | 说明 |
-|------|------|
-| `message` | 消息接收 |
-| `enter_agent` | 进入应用 |
-| `user_click` | 菜单点击 |
-| `view` | 链接访问 |
-
-### 审批事件
-| 事件 | 说明 |
-|------|------|
-| `submit_approval` | 提交审批 |
-| `Approval` | 审批通过 |
-
-### 打卡事件
-| 事件 | 说明 |
-|------|------|
-| `checkin` | 打卡事件 |
-| `report_checkin` | 打卡数据 |
-
-### 直播事件
-| 事件 | 说明 |
-|------|------|
-| `living_status` | 直播状态变更 |
+- **客户联系**：`add_external_contact`、`del_external_contact`、`change_external_contact` 等
+- **客户群**：`create_chat`、`update_chat`、`dismiss_chat`
+- **审批**：`submit_approval`、`Approval`
+- **打卡**：`checkin`、`report_checkin`
+- **会议**：`meeting_start`、`meeting_end`、`meeting_created` 等
+- **通讯录**：`change_member`、`change_department`、`change_tag`
 
 ## 文件结构
 
 ```
-wecomtool/
-├── config.json              # 配置文件
-├── config.example.json      # 配置示例
-├── plugin.cjs             # OpenClaw 插件入口
-├── openclaw.plugin.json    # 插件清单
+openclaw-wecom-api/
+├── openclaw.plugin.json     # 插件清单
+├── plugin.cjs               # 插件入口（HTTP 回调注册）
 ├── package.json
 │
-└── src/
-    ├── index.js           # 主入口（WeComPlugin 类）
-    ├── config.js          # 配置加载
-    ├── callback-helper.js  # 回调处理工具
-    ├── crypto.js          # 加密工具
-    ├── sdk/               # SDK 相关
-    └── modules/           # 32+ API 模块
-        ├── message/
-        ├── approval/
-        ├── contact/
-        └── ...
+├── src/
+│   ├── index.js             # WeComPlugin 主类
+│   ├── callback-helper.js   # 回调处理工具
+│   ├── crypto.js           # 加密/解密
+│   ├── config.js            # 配置加载
+│   │
+│   └── modules/             # 32+ API 模块
+│       ├── approval/
+│       ├── contact/
+│       ├── contact_stats/
+│       ├── customer/
+│       ├── message/
+│       ├── meeting/
+│       ├── schedule/
+│       └── ...
+│
+└── skills/
+    └── wecom-api/          # Skill 入口（供 AI 调用）
+        ├── index.js
+        └── SKILL.md
 ```
 
 ## 更新
 
 ```bash
-cd /root/.openclaw/extensions/wecomtool
+cd /root/.openclaw/extensions/wecom-api
 git pull
-openclaw gateway restart
+npm install
+systemctl --user restart openclaw-gateway
 ```
 
 ## 常见问题
 
-**审批 API 查询失败？**
-- 企业微信审批 API 必须通过 `template_id` 查询审批单
-- `template_id` 获取方式：企业微信后台 → 应用管理 → 审批 → 查看模板ID
-- 模板配置文件：`config/approval-templates.json`（本地私有，不同步 GitHub）
+**Q: 与 @sunnoy/wecom 冲突吗？**
+A: 不冲突。@sunnoy/wecom 负责消息收发，本插件负责 API 调用和事件回调，走不同的 HTTP 路径。
 
-**回调验证失败？**
-- 确认 Token 与企业微信后台一致
-- 确认域名已解析到服务器
-- 重启 OpenClaw
+**Q: 回调验证失败？**
+A: 确认 Token / EncodingAESKey 与企业微信后台一致，且 URL 能在公网访问。
 
-**共用模式收不到消息？**
-- 确认 `callbackMode` 为 `"shared"`
-- 确认 Nginx mirror 配置正确
-
----
-
-**⚠️ 免责声明**
-
-本插件基于 OpenClaw 平台开发，代码可能存在 BUG，欢迎提交 Issues：
-https://github.com/jiexiaoyin/wecomtool/issues
+**Q: 如何查询昨天的客户新增数？**
+A: 通过 `contact_stats` 模块查询，配合事件回调可以获取实时数据。
 
 ## License
 

@@ -31,6 +31,7 @@ const Moments = require('./modules/moments');
 const OceanEngine = require('./modules/oceanengine');
 const Messenger = require('./modules/messenger');
 const ContactStats = require('./modules/contact_stats');
+const Customer = require('./modules/customer');
 const Sensitive = require('./modules/sensitive');
 const CheckInRules = require('./modules/checkin_rules');
 const School = require('./modules/school');
@@ -56,6 +57,7 @@ class WeComPlugin {
     this.message = new Message(config);
     this.app = new App(config);
     this.media = new Media(config);
+    this.customer = new Customer(config);
     
     // 协作效率
     this.schedule = new Schedule(config);

@@ -52,7 +52,7 @@ class Contact extends WeComSDK {
    * @param {string} cursor 分页游标
    */
   async getCustomerList(userId, cursor = '') {
-    return this.post('/externalcontact/list', { userid: userId, cursor });
+    return this.get('/externalcontact/list', { userid: userId, cursor });
   }
 
   /**
@@ -61,7 +61,7 @@ class Contact extends WeComSDK {
    * @param {string} externalUserId 外部联系人 userid
    */
   async getCustomerDetail(userId, externalUserId) {
-    return this.post('/externalcontact/get', { userid: userId, external_userid: externalUserId });
+    return this.get('/externalcontact/get', { userid: userId, external_userid: externalUserId });
   }
 
   /**

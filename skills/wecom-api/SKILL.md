@@ -1,8 +1,8 @@
 ---
-name: wecomtool
+name: wecom-api
 description: |
-  企业微信 API 工具库。激活当用户提到企业微信 API、wecomtool，或需要调用企业微信 API 时。
-  同时支持交互式配置：说"配置企业微信"或"设置wecomtool"来启动配置向导。
+  企业微信 API 工具库。激活当用户提到企业微信 API、wecom-api，或需要调用企业微信 API 时。
+  同时支持交互式配置：说"配置企业微信"或"设置wecom-api"来启动配置向导。
 ---
 
 # WeCom Tool

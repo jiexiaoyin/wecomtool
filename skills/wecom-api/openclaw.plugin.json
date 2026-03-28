@@ -1,6 +1,6 @@
 {
-  "id": "wecomtool",
-  "channels": ["wecomtool"],
+  "id": "wecom-api",
+  "channels": [],
   "skills": ["./skills"],
   "configSchema": {
     "type": "object",

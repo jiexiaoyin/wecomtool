@@ -27,9 +27,9 @@ let callbackInstance = null;
 let callbackHandler = null;
 
 const plugin = {
-  id: "wecomtool",
-  name: "WeCom Tool (企业微信工具)",
-  description: "企业微信 API 工具集，支持回调处理和 32 个 API 模块",
+  id: "wecom-api",
+  name: "WeCom API (企业微信API)",
+  description: "企业微信 API 工具集，支持事件回调和 32 个 API 模块",
   configSchema: {
     type: "object",
     properties: {
@@ -45,7 +45,7 @@ const plugin = {
    * 注册插件
    */
   register(api) {
-    console.log('[wecomtool] 插件注册中...');
+    console.log('[wecom-api] 插件注册中...');
 
     // 加载配置
     const config = getConfig();
@@ -53,16 +53,16 @@ const plugin = {
     // 初始化回调处理实例
     if (config.corpId && config.corpSecret && config.agentId) {
       callbackInstance = new CallbackClass(config);
-      console.log('[wecomtool] 回调处理已初始化');
+      console.log('[wecom-api] 回调处理已初始化');
     } else {
-      console.log('[wecomtool] 配置不完整，跳过回调初始化');
+      console.log('[wecom-api] 配置不完整，跳过回调初始化');
     }
     
     // 初始化统计模块
     let contactStats = null;
     if (config.corpId && config.corpSecret) {
       contactStats = new ContactStats(config);
-      console.log('[wecomtool] 统计模块已初始化');
+      console.log('[wecom-api] 统计模块已初始化');
     }
     
     // 初始化通讯录缓存模块
@@ -85,10 +85,10 @@ const plugin = {
       const syncStatus = addressBookCache.requestSync();
       
       if (syncStatus.needConfirm) {
-        console.log('[wecomtool] 通讯录缓存未初始化，请回复"同步通讯录"开始同步');
+        console.log('[wecom-api] 通讯录缓存未初始化，请回复"同步通讯录"开始同步');
         // 不自动同步，等待用户确认
       } else if (syncStatus.alreadySynced) {
-        console.log('[wecomtool] 通讯录缓存已就绪');
+        console.log('[wecom-api] 通讯录缓存已就绪');
       }
     }
 
@@ -121,7 +121,7 @@ const plugin = {
           
           // 记录统计日志
           if (['add_external_contact', 'del_external_contact', 'change_external_contact'].includes(message.Event)) {
-            console.log(`[wecomtool] 客户统计: ${message.Event} - ${message.UserID || 'unknown'}`);
+            console.log(`[wecom-api] 客户统计: ${message.Event} - ${message.UserID || 'unknown'}`);
           }
         }
         
@@ -145,13 +145,13 @@ const plugin = {
           }
         }
         
-        console.log(`[wecomtool] 事件: ${eventType} from ${fromUser}`);
+        console.log(`[wecom-api] 事件: ${eventType} from ${fromUser}`);
       },
     });
 
     // 注册 HTTP 路由
     api.registerHttpRoute({
-      path: "/plugins/wecomtool/callback",
+      path: "/plugins/wecom-api/callback",
       handler: callbackHandler,
       auth: "plugin",
       match: "prefix",
@@ -159,13 +159,13 @@ const plugin = {
 
     // 兼容旧路径
     api.registerHttpRoute({
-      path: "/wecomtool/callback",
+      path: "/wecom-api/callback",
       handler: callbackHandler,
       auth: "plugin",
       match: "prefix",
     });
 
-    console.log('[wecomtool] 插件注册完成');
+    console.log('[wecom-api] 插件注册完成');
   },
 };
 

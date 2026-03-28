@@ -4,10 +4,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const WeComPlugin = require('/root/.openclaw/extensions/wecomtool/src/index');
 
-// 配置文件路径
-const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
+// 插件根目录：skills/wecom-api 上两级
+const pluginRoot = path.join(__dirname, '..', '..');
+const WeComPlugin = require(path.join(pluginRoot, 'src/index'));
+const CONFIG_PATH = path.join(pluginRoot, 'config.json');
 
 // 缓存插件实例
 let wecomInstance = null;

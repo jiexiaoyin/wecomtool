@@ -156,7 +156,7 @@ class Callback extends EventEmitter {
    * @param {string} encrypt 加密内容
    */
   verifyMessage(msgSignature, timestamp, nonce, encrypt) {
-    console.log('[wecomtool] verifyMessage params:', {
+    console.log('[wecom-api] verifyMessage params:', {
       token: this.token,
       timestamp,
       nonce,
@@ -170,7 +170,7 @@ class Callback extends EventEmitter {
       encrypt,
       signature: msgSignature
     });
-    console.log('[wecomtool] verifyMessage result:', result);
+    console.log('[wecom-api] verifyMessage result:', result);
     return result;
   }
 
@@ -232,8 +232,8 @@ class Callback extends EventEmitter {
    */
   async parseMessage(xmlContent) {
     const xml = await this.parseXML(xmlContent);
-    console.log('[wecomtool] parseMessage xml keys:', Object.keys(xml));
-    console.log('[wecomtool] parseMessage xml:', JSON.stringify(xml).substring(0, 500));
+    console.log('[wecom-api] parseMessage xml keys:', Object.keys(xml));
+    console.log('[wecom-api] parseMessage xml:', JSON.stringify(xml).substring(0, 500));
     
     const message = {
       ToUserName: xml.ToUserName,
@@ -327,26 +327,26 @@ class Callback extends EventEmitter {
    * 处理消息事件
    */
   async _handleMessage(msgSignature, timestamp, nonce, xmlBody) {
-    console.log('[wecomtool] _handleMessage called');
-    console.log('[wecomtool] xmlBody preview:', xmlBody ? xmlBody.substring(0, 300) : 'missing');
+    console.log('[wecom-api] _handleMessage called');
+    console.log('[wecom-api] xmlBody preview:', xmlBody ? xmlBody.substring(0, 300) : 'missing');
     const xml = await this.parseXML(xmlBody);
-    console.log('[wecomtool] parsed xml Encrypt length:', xml.Encrypt ? xml.Encrypt.length : 'null');
+    console.log('[wecom-api] parsed xml Encrypt length:', xml.Encrypt ? xml.Encrypt.length : 'null');
     const encrypt = xml.Encrypt;
     
     // 根据模式决定是否验证签名
     if (this.callbackMode === 'shared') {
       // shared 模式：wecom 已验证过签名，跳过
-      console.log('[wecomtool] 跳过签名验证（shared 模式，由 wecom 统一验证）');
+      console.log('[wecom-api] 跳过签名验证（shared 模式，由 wecom 统一验证）');
     } else {
       // independent 模式：必须验证签名
-      console.log('[wecomtool] 验证签名（independent 模式）');
+      console.log('[wecom-api] 验证签名（independent 模式）');
       if (!this.verifyMessage(msgSignature, timestamp, nonce, encrypt)) {
         throw new Error('签名验证失败');
       }
     }
     
     // 解密消息
-    console.log('[wecomtool] decrypting...');
+    console.log('[wecom-api] decrypting...');
     const decryptedXml = this.decrypt(encrypt);
     const message = await this.parseMessage(decryptedXml);
     
@@ -464,14 +464,14 @@ class Callback extends EventEmitter {
     try {
       const fs = require('fs');
       const path = require('path');
-      const dir = '/root/.openclaw/extensions/wecomtool/data';
+      const dir = '/root/.openclaw/extensions/wecom-api/data';
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
       const filePath = path.join(dir, filename);
       fs.appendFileSync(filePath, JSON.stringify(record) + '\n', 'utf8');
     } catch (e) {
-      console.log('[wecomtool] 写入文件失败:', e.message);
+      console.log('[wecom-api] 写入文件失败:', e.message);
     }
   }
 
@@ -483,7 +483,7 @@ class Callback extends EventEmitter {
     try {
       const fs = require('fs');
       const path = require('path');
-      const dataDir = '/root/.openclaw/extensions/wecomtool/data';
+      const dataDir = '/root/.openclaw/extensions/wecom-api/data';
       const records = [];
       
       const files = ['event_history.jsonl', 'message_history.jsonl'];
@@ -499,7 +499,7 @@ class Callback extends EventEmitter {
             if (raw.startsWith('[')) {
               const oldRecords = JSON.parse(raw);
               records.push(...oldRecords);
-              console.log('[wecomtool] 兼容加载旧格式:', oldRecords.length, '条 from', filename);
+              console.log('[wecom-api] 兼容加载旧格式:', oldRecords.length, '条 from', filename);
             }
           }
           continue;
@@ -512,15 +512,15 @@ class Callback extends EventEmitter {
           .filter(line => line.trim())
           .map(line => JSON.parse(line));
         records.push(...fileRecords);
-        console.log('[wecomtool] 加载', filename, ':', fileRecords.length, '条');
+        console.log('[wecom-api] 加载', filename, ':', fileRecords.length, '条');
       }
       
       // 按时间倒序
       records.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       this.eventHistory = records.slice(0, this.maxHistorySize);
-      console.log('[wecomtool] 事件历史合计:', this.eventHistory.length, '条');
+      console.log('[wecom-api] 事件历史合计:', this.eventHistory.length, '条');
     } catch (e) {
-      console.log('[wecomtool] 加载事件历史失败:', e.message);
+      console.log('[wecom-api] 加载事件历史失败:', e.message);
     }
   }
 
@@ -531,7 +531,7 @@ class Callback extends EventEmitter {
     try {
       const fs = require('fs');
       const path = require('path');
-      const filePath = '/root/.openclaw/extensions/wecomtool/data/event_history.jsonl';
+      const filePath = '/root/.openclaw/extensions/wecom-api/data/event_history.jsonl';
       
       if (!fs.existsSync(filePath)) {
         return;
@@ -553,9 +553,9 @@ class Callback extends EventEmitter {
           .reverse(); // reverse 让最新的在前面（与 unshift 一致）
       }
       
-      console.log('[wecomtool] 已加载事件历史:', this.eventHistory.length, '条');
+      console.log('[wecom-api] 已加载事件历史:', this.eventHistory.length, '条');
     } catch (e) {
-      console.log('[wecomtool] 加载事件历史失败:', e.message);
+      console.log('[wecom-api] 加载事件历史失败:', e.message);
     }
   }
 

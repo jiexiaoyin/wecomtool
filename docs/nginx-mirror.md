@@ -101,7 +101,7 @@ server {
     location = /plugins/wecom/agent/default {
 
         # 镜像分发（可无限添加）
-        mirror /mirror/wecomtool;
+        mirror /mirror/wecom-api;
         # mirror /mirror/your-plugin;
 
         # 【A 非容器环境：物理机/虚拟机】
@@ -122,11 +122,11 @@ server {
     }
 
     # ------------------------------
-    # 镜像路由 → wecomtool
+    # 镜像路由 → wecom-api
     # ------------------------------
-    location /mirror/wecomtool {
+    location /mirror/wecom-api {
         internal;
-        proxy_pass http://host.docker.internal:18789/plugins/wecomtool/callback;
+        proxy_pass http://host.docker.internal:18789/plugins/wecom-api/callback;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -186,7 +186,7 @@ server {
 ## 📁 文件说明
 
 ```
-wecomtool/
+wecom-api/
 ├── README.md                 # 主文档
 ├── nginx-mirror.md          # 本文档（Nginx 配置说明）
 └── nginx.conf              # 完整 Nginx 配置（可选）

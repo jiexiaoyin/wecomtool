@@ -34,7 +34,7 @@ interface PluginConfig {
 let callbackInstance: any = null;
 
 const plugin = {
-  id: "wecomtool",
+  id: "wecom-api",
   name: "WeCom Tool (企业微信工具)",
   description: "企业微信 API 工具集，支持回调处理和 32 个 API 模块",
   configSchema: {
@@ -52,7 +52,7 @@ const plugin = {
    * 注册插件
    */
   register(api: OpenClawPluginApi) {
-    console.log('[wecomtool] 插件注册中...');
+    console.log('[wecom-api] 插件注册中...');
 
     // 加载配置
     const config = getConfig();
@@ -60,12 +60,12 @@ const plugin = {
     // 初始化回调处理实例
     if (config.corpId && config.corpSecret && config.agentId) {
       callbackInstance = new Callback.default ? new Callback.default(config) : new Callback(config);
-      console.log('[wecomtool] 回调处理已初始化');
+      console.log('[wecom-api] 回调处理已初始化');
     }
 
     // 注册 HTTP 路由 - 回调入口
     api.registerHttpRoute({
-      path: "/plugins/wecomtool/callback",
+      path: "/plugins/wecom-api/callback",
       handler: handleCallbackRequest,
       auth: "none", // 企业微信需要验证签名，不在网关层验证
       match: "prefix",
@@ -73,13 +73,13 @@ const plugin = {
 
     // 兼容旧路径
     api.registerHttpRoute({
-      path: "/wecomtool/callback",
+      path: "/wecom-api/callback",
       handler: handleCallbackRequest,
       auth: "none",
       match: "prefix",
     });
 
-    console.log('[wecomtool] 插件注册完成');
+    console.log('[wecom-api] 插件注册完成');
   },
 };
 
@@ -89,7 +89,7 @@ const plugin = {
 async function handleCallbackRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   if (!callbackInstance) {
     res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end('wecomtool plugin not initialized');
+    res.end('wecom-api plugin not initialized');
     return true;
   }
 
@@ -125,7 +125,7 @@ async function handleCallbackRequest(req: IncomingMessage, res: ServerResponse):
       res.end(result.message || 'error');
     }
   } catch (error: any) {
-    console.error('[wecomtool] 回调处理失败:', error);
+    console.error('[wecom-api] 回调处理失败:', error);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('error');
   }
