@@ -2,11 +2,11 @@
 
 企业微信 API OpenClaw 插件，为 OpenClaw 提供完整的企业微信 API 调用能力和事件回调处理。
 
-## 与 @sunnoy/wecom 的关系
+## 与其他 OpenClaw 企业微信插件的关系
 
 | 插件 | 职责 | 通道 |
 |------|------|------|
-| **@sunnoy/wecom** | 消息收发（WebSocket 长连接） | `"wecom"` 通道 |
+| **其他 Channel 插件**（如 @sunnoy/wecom） | 消息收发（WebSocket 长连接） | `"wecom"` 通道 |
 | **openclaw-wecom-api** | API 调用 + 事件回调 | Skill 方式被 AI 触发 |
 
 两者**不冲突**，共用同一套 `corpId`/`corpSecret` 凭证。
@@ -17,7 +17,7 @@
 - **事件回调**：支持客户变更、审批、签到、会议等事件的 HTTP 接收
 - **零额外部署**：继承 OpenClaw HTTP 端口（80/443），无需单独开端口
 - **智能权限控制**：admin / manager / staff 三级数据隔离
-- **回调路径隔离**：与 @sunnoy/wecom 使用不同路径，互不干扰
+- **回调路径隔离**：与 Channel 插件使用不同路径，互不干扰
 
 ## HTTP 回调路径
 
@@ -104,12 +104,12 @@ nohup systemctl --user restart openclaw-gateway > /tmp/restart.log 2>&1 &
 - 填写「URL」：`https://你的域名/plugins/wecom-api/callback`
 - 填写「Token」和「EncodingAESKey」：与 config.json 中一致
 
-## 与 @sunnoy/wecom 共用一个应用
+## 与其他 OpenClaw 企业微信插件共用应用
 
-当本插件与 @sunnoy/wecom 共用同一个企业微信应用时，需要使用 Nginx Mirror 将企业微信的回调同时分发给两个插件：
+当本插件与其他 OpenClaw 企业微信 Channel 插件（如 @sunnoy/wecom）共用同一个企业微信自建应用时，需要使用 Nginx Mirror 将企业微信的回调同时分发给两个插件：
 
 ```nginx
-# 企业微信回调入口（@sunnoy/wecom 的路径）
+# 企业微信回调入口（其他 Channel 插件的路径，以 @sunnoy/wecom 为例）
 location /plugins/wecom/agent/default {
     mirror /plugins/wecom-api/callback;
     mirror_request_body on;

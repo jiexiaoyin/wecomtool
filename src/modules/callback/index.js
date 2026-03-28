@@ -27,7 +27,6 @@ class Callback extends EventEmitter {
     this.encodingAESKey = config.encodingAESKey || '';
     this.corpId = config.corpId || '';
     this.agentId = config.agentId || '';
-    this.callbackMode = 'independent';
     
     // 事件记录存储
     this.eventHistory = [];
